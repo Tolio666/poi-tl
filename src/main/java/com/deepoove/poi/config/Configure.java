@@ -15,26 +15,31 @@
  */
 package com.deepoove.poi.config;
 
+import com.deepoove.poi.exception.ResolverException;
+import com.deepoove.poi.policy.AbstractPatternRenderPolicy;
+import com.deepoove.poi.policy.AbstractRenderPolicy.ClearHandler;
+import com.deepoove.poi.policy.AbstractRenderPolicy.ValidErrorHandler;
+import com.deepoove.poi.policy.DocxRenderPolicy;
+import com.deepoove.poi.policy.ImagePatternRenderPolicy;
+import com.deepoove.poi.policy.MiniTableRenderPolicy;
+import com.deepoove.poi.policy.NumbericRenderPolicy;
+import com.deepoove.poi.policy.PictureRenderPolicy;
+import com.deepoove.poi.policy.RenderPolicy;
+import com.deepoove.poi.policy.TablePatternRenderPolicy;
+import com.deepoove.poi.policy.TextRenderPolicy;
+import com.deepoove.poi.policy.ref.ReferenceRenderPolicy;
+import com.deepoove.poi.util.RegexUtils;
+import org.apache.commons.lang3.StringUtils;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import com.deepoove.poi.policy.AbstractRenderPolicy.ClearHandler;
-import com.deepoove.poi.policy.AbstractRenderPolicy.ValidErrorHandler;
-import com.deepoove.poi.policy.ref.ReferenceRenderPolicy;
-import com.deepoove.poi.policy.DocxRenderPolicy;
-import com.deepoove.poi.policy.MiniTableRenderPolicy;
-import com.deepoove.poi.policy.NumbericRenderPolicy;
-import com.deepoove.poi.policy.PictureRenderPolicy;
-import com.deepoove.poi.policy.RenderPolicy;
-import com.deepoove.poi.policy.TextRenderPolicy;
-import com.deepoove.poi.util.RegexUtils;
-
 /**
  * 插件化配置
- * 
+ *
  * @author Sayi
  * @version 1.0.0
  */
@@ -45,10 +50,15 @@ public class Configure {
 
     // Highest priority
     private Map<String, RenderPolicy> customPolicys = new HashMap<String, RenderPolicy>();
-    // Low priority
+    // lowest priority
     private Map<Character, RenderPolicy> defaultPolicys = new HashMap<Character, RenderPolicy>();
 
-    /**
+	/**
+	 * low priority
+	 */
+	private Map<String, AbstractPatternRenderPolicy> patternPolicy = new HashMap<>();
+
+	/**
      * 引用渲染策略
      */
     private List<ReferenceRenderPolicy<?>> referencePolicies = new ArrayList<>();
@@ -88,20 +98,23 @@ public class Configure {
         plugin(GramerSymbol.TABLE, new MiniTableRenderPolicy());
         plugin(GramerSymbol.NUMBERIC, new NumbericRenderPolicy());
         plugin(GramerSymbol.DOCX_TEMPLATE, new DocxRenderPolicy());
+        // 默认模式匹配
+		pluginPattern(TablePatternRenderPolicy.NAME, new TablePatternRenderPolicy());
+		pluginPattern(ImagePatternRenderPolicy.NAME, new ImagePatternRenderPolicy());
     }
 
     /**
-     * 创建默认配置
-     * 
+     * 创建默认配置，默认启用Spring EL
+     *
      * @return
      */
     public static Configure createDefault() {
-        return newBuilder().build();
+        return newBuilder().setElMode(ELMode.SPEL_MODE).build();
     }
 
     /**
      * 构建器
-     * 
+     *
      * @return
      */
     public static ConfigureBuilder newBuilder() {
@@ -110,7 +123,7 @@ public class Configure {
 
     /**
      * 新增或变更语法插件
-     * 
+     *
      * @param c
      *            语法
      * @param policy
@@ -123,7 +136,7 @@ public class Configure {
 
     /**
      * 新增或变更语法插件
-     * 
+     *
      * @param symbol
      *            语法
      * @param policy
@@ -137,7 +150,7 @@ public class Configure {
 
     /**
      * 自定义模板和策略
-     * 
+     *
      * @param tagName
      *            模板名称
      * @param policy
@@ -149,16 +162,26 @@ public class Configure {
 
     /**
      * 新增引用渲染策略
-     * 
+     *
      * @param policy
      */
     public void referencePolicy(ReferenceRenderPolicy<?> policy) {
         referencePolicies.add(policy);
     }
 
+	/**
+	 * pattern Policy
+	 *
+	 * @param name 模板名称
+	 * @param policy Policy
+	 */
+	public void pluginPattern(String name, AbstractPatternRenderPolicy policy) {
+		patternPolicy.put(name, policy);
+	}
+
     /**
      * 获取标签策略
-     * 
+     *
      * @param tagName
      *            模板名称
      * @param sign
@@ -168,16 +191,32 @@ public class Configure {
 
     public RenderPolicy getPolicy(String tagName, Character sign) {
         RenderPolicy policy = getCustomPolicy(tagName);
+        if (policy == null) {
+			policy = getPatternRenderPolicy(tagName);
+		}
         return null == policy ? getDefaultPolicy(sign) : policy;
     }
 
     public List<ReferenceRenderPolicy<?>> getReferencePolicies() {
         return referencePolicies;
     }
-    
+
     private RenderPolicy getCustomPolicy(String tagName) {
         return customPolicys.get(tagName);
     }
+
+	private AbstractPatternRenderPolicy getPatternRenderPolicy(String tagName) {
+    	if (AbstractPatternRenderPolicy.isPattern(tagName)) {
+			for (Map.Entry<String, AbstractPatternRenderPolicy> entry : patternPolicy.entrySet()) {
+				AbstractPatternRenderPolicy policy = entry.getValue();
+				if (policy.support(tagName)) {
+					return policy;
+				}
+			}
+			throw new ResolverException("Cannot find pattern policy for tag: " + tagName);
+		}
+		return null;
+	}
 
     private RenderPolicy getDefaultPolicy(Character sign) {
         return defaultPolicys.get(sign);

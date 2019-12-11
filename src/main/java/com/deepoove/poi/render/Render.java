@@ -15,27 +15,27 @@
  */
 package com.deepoove.poi.render;
 
-import java.util.List;
-import java.util.Objects;
-import java.util.concurrent.TimeUnit;
-
+import com.deepoove.poi.NiceXWPFDocument;
+import com.deepoove.poi.XWPFTemplate;
+import com.deepoove.poi.config.Configure;
+import com.deepoove.poi.exception.RenderException;
+import com.deepoove.poi.policy.AbstractPatternRenderPolicy;
+import com.deepoove.poi.policy.DocxRenderPolicy;
+import com.deepoove.poi.policy.RenderPolicy;
+import com.deepoove.poi.policy.ref.ReferenceRenderPolicy;
+import com.deepoove.poi.template.ElementTemplate;
 import org.apache.commons.lang3.ClassUtils;
 import org.apache.commons.lang3.time.StopWatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.deepoove.poi.NiceXWPFDocument;
-import com.deepoove.poi.XWPFTemplate;
-import com.deepoove.poi.config.Configure;
-import com.deepoove.poi.exception.RenderException;
-import com.deepoove.poi.policy.DocxRenderPolicy;
-import com.deepoove.poi.policy.RenderPolicy;
-import com.deepoove.poi.policy.ref.ReferenceRenderPolicy;
-import com.deepoove.poi.template.ElementTemplate;
+import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 渲染器，支持表达式计算接口RenderDataCompute的扩展
- * 
+ *
  * @author Sayi
  * @version
  * @since 1.5.0
@@ -48,7 +48,7 @@ public class Render {
 
     /**
      * 默认计算器为ELObjectRenderDataCompute
-     * 
+     *
      * @param root
      */
     public Render(Object root) {
@@ -145,7 +145,14 @@ public class Render {
     private void doRender(ElementTemplate ele, RenderPolicy policy, XWPFTemplate template) {
         LOGGER.info("Start render TemplateName:{}, Sign:{}, policy:{}", ele.getTagName(),
                 ele.getSign(), ClassUtils.getShortClassName(policy.getClass()));
-        policy.render(ele, renderDataCompute.compute(ele.getTagName()), template);
+		String el;
+		if (policy instanceof AbstractPatternRenderPolicy) {
+			AbstractPatternRenderPolicy patternRenderPolicy = (AbstractPatternRenderPolicy) policy;
+			el = patternRenderPolicy.getVar();
+		} else {
+			el = ele.getTagName();
+		}
+		policy.render(ele, renderDataCompute.compute(el), template);
     }
 
     private void doRender(ReferenceRenderPolicy<?> policy, XWPFTemplate template) {
