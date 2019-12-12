@@ -1,74 +1,161 @@
 # Poi-tl(Poi-template-language)
 
-[![Build Status](https://travis-ci.org/Sayi/poi-tl.svg?branch=master)](https://travis-ci.org/Sayi/poi-tl) ![jdk1.6+](https://img.shields.io/badge/jdk-1.6%2B-orange.svg) ![jdk1.8](https://img.shields.io/badge/jdk-1.8-orange.svg) ![poi3.16%2B](https://img.shields.io/badge/apache--poi-3.16%2B-blue.svg) ![poi4.0.0](https://img.shields.io/badge/apache--poi-4.0.0-blue.svg) [![Gitter](https://badges.gitter.im/Sayi/poi-tl.svg)](https://gitter.im/Sayi/poi-tl?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
+> 基于 poi-tl 的二次开发
 
-:memo:  Word 模板引擎，基于Apache poi，目标是在文档的任何地方做任何事情(*Do Anything Anywhere*)。
+## 说明
 
-下表对一些处理Word的解决方案作了一些比较：
+修改了源码，新增 `AbstractPatternRenderPolicy` 抽象类，用于实现 `name|attr:var` 语法
 
-| 方案 | 跨平台 | 样式处理  | 易用性
-| --- | --- | --- | --- |
-| **Poi-tl** | 纯Java组件，跨平台 | :white_check_mark: 不需要编码，模板即样式 | :white_check_mark: 简单：模板引擎，对POI进行封装，支持Word文档合并、表格处理等
-| Apache POI | 纯Java组件，跨平台 | 编码 | 简单，没有模板引擎功能
-| Freemarker | XML操作，跨平台 | 无 | 复杂，需要理解XML结构，基于XML构造模板
-| OpenOffice | 需要安装OpenOffice软件 | 编码 | 复杂，需要了解OpenOffice的API
-| Jacob、winlib | Windows平台 | 编码 | 复杂，不推荐使用
+其中：
 
-## Maven
-v1.6.0为最新版本，要求JDK1.8+、Apache poi4.0.0+：
+- name 为名称
+- attr 为一些属性
+- var 为数据变量参数
 
-```xml
-<dependency>
-  <groupId>com.deepoove</groupId>
-  <artifactId>poi-tl</artifactId>
-  <version>1.6.0</version>
-</dependency>
-```
+注意：
 
-v1.5.1是构建在JDK1.6+、Apache poi3.16+上的版本：
+- 默认开启 Spring EL 表达式
+- 最大程度保证与 [poi-tl](https://github.com/Sayi/poi-tl) 的兼容性，目前基于 v1.6.0 fork， v1.6.0 的功能均能正常使用。
 
-```xml
-<dependency>
-  <groupId>com.deepoove</groupId>
-  <artifactId>poi-tl</artifactId>
-  <version>1.5.1</version>
-</dependency>
-```
+## 扩展
 
-## 2分钟快速入门
-从一个超级简单的例子开始：把{{title}}替换成"Poi-tl 模板引擎"。
+### 表格
 
-1. 新建文档template.docx，包含文本{{title}}
-2. TDO模式：Template + data-model = output
+语法：`{{table|limit:var}}`
+
+- table说明是表格
+- limit 为数据填充的行数，数据不足补空
+- var 为填充数据（JSON）的 key，可以是一个数组。
+
+模板：
+
+![extend-table](docs/assets/extend-table.jpg)
+
+其中：
+
+- 姓名的前面出现的`{{table|5:[users]}}`，代表了这是一个表格模板，`users`则说明 JSON 数据中存在一个 users 的 key 。
+- 表格的第二行变量会根据传递的值动态替换，{name}、{age} 等模板，则说明 users 这个 key 中的 JSON 对象存在 name、age 这两个key。
+- 由于数据只有2条，限制5条，因此补空行3条
+
+测试代码：
 
 ```java
-//核心API采用了极简设计，只需要一行代码
-XWPFTemplate.compile("template.docx").render(new HashMap<String, Object>(){{
-        put("title", "Poi-tl 模板引擎");
-}}).writeToFile("out_template.docx");
+@Test
+public void run() {
+  Path path = Paths.get("src/test/resources", "table_pattern.docx");
+  XWPFTemplate template = XWPFTemplate.compile(path.toFile())
+    // 数据
+    .render(new HashMap<String, Object>() {{
+      put("users", Arrays.asList(new User("张三", 1), new User("李四", 2)));
+    }});
+  // 输出
+  Path outPath = Paths.get("src/test/resources", "table_pattern_out.docx");
+  try (OutputStream os = new BufferedOutputStream(new FileOutputStream(outPath.toFile()))) {
+    template.write(os);
+  } catch (IOException e) {
+    LOG.error("render tpl error", e);
+  } finally {
+    try {
+      template.close();
+    } catch (IOException e) {
+      LOG.error("close template error", e);
+    }
+  }
+}
 ```
 
-## 详细文档与示例
+可以看到这里的 JSON 对象（Java中可以是一个hashmap）存在 users 这个 key，且存在 2 条数据。User 这个对象有两个属性 name、age ，模板在解析时，会自动取值。
 
-[中文文档](http://deepoove.com/poi-tl) or [English-tutorial](https://github.com/Sayi/poi-tl/wiki/2.English-tutorial)
+输出：
 
-* [基础(图片、文本、表格、列表)示例：软件说明文档](http://deepoove.com/poi-tl/#_%E8%BD%AF%E4%BB%B6%E8%AF%B4%E6%98%8E%E6%96%87%E6%A1%A3)
-* [表格示例：付款通知书](http://deepoove.com/poi-tl/#example-table)
-* [循环模板示例：文章写作](http://deepoove.com/poi-tl/#example-article)
-* [Example：个人简历](http://deepoove.com/poi-tl/#_%E4%B8%AA%E4%BA%BA%E7%AE%80%E5%8E%86)
+![extend-table-out](docs/assets/extend-table-out.jpg)
 
-关于Apache POI的使用，这里有个入门教程：[Apache POI Word(docx) 入门示例教程](http://deepoove.com/poi-tl/apache-poi-guide.html)，更多的示例以及所有示例的源码参见JUnit单元测试。
+总结：表格正常渲染，而且样式也正常保留，原来的数据也会保留下来，数据不足补空行。
 
-![](http://deepoove.com/poi-tl/demo.png)
-![](http://deepoove.com/poi-tl/demo_result.png)
+### 图片
 
-## 架构设计
-**模板和插件丰富了Poi-tl的想象力。** 整体设计采用`Template + data-model = output`模式，**Configure**提供了配置功能，**Visitor**提供了解析功能，**RenderPolicy**是渲染策略扩展点，**Render**模块提供了**RenderDataCompute**标签表达式计算扩展点，通过插件对每个标签进行渲染。
+语法：`{{image|height*width:var}}`
 
-![](http://deepoove.com/poi-tl/arch.png)
+- image说明是图片
+- height*width代表图片的高度和宽度，单位为厘米
+- var为填充数据（JSON）的 key，是一个图片字节通过base64加密的字符串
 
-## 建议和完善
-参见[常见问题](http://deepoove.com/poi-tl/#_%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98)，欢迎在GitHub Issue中提问和交流。
+模板：
 
-社区交流讨论群：[Gitter频道](https://gitter.im/Sayi/poi-tl)
+![extend-image](/Users/xuanbo/Projects/opensource/poi-tl/docs/assets/extend-image.jpg)
+
+测试代码：
+
+```java
+@Test
+public void run() throws IOException {
+  Path logoPath = Paths.get("src/test/resources", "logo.png");
+  byte[] bytes = Files.readAllBytes(logoPath);
+  byte[] encode = Base64.getEncoder().encode(bytes);
+
+  Path path = Paths.get("src/test/resources", "image_pattern.docx");
+  XWPFTemplate template = XWPFTemplate.compile(path.toFile())
+    // 数据
+    .render(new HashMap<String, Object>() {{
+      put("logo", new String(encode));
+    }});
+  // 输出
+  Path outPath = Paths.get("src/test/resources", "image_pattern_out.docx");
+  try (OutputStream os = new BufferedOutputStream(new FileOutputStream(outPath.toFile()))) {
+    template.write(os);
+  } catch (IOException e) {
+    LOG.error("render tpl error", e);
+  } finally {
+    try {
+      template.close();
+    } catch (IOException e) {
+      LOG.error("close template error", e);
+    }
+  }
+}
+```
+
+输出：
+
+![extend-image-out](docs/assets/extend-image-out.jpg)
+
+总结：图片能正常根据高度宽度渲染出来
+
+### 列表
+
+语法：`list|limit:var`
+
+- list说明是列表
+- limit 为数据填充的行数，数据不足补空
+- var 为填充数据（JSON）的 key，值可以是一个字符串或者一个字符串数组。
+
+模板：
+
+![extend-list](docs/assets/extend-list.jpg)
+
+测试代码：
+
+```java
+@Test
+public void run() {
+  Path inPath = Paths.get("src/test/resources", "list_pattern.docx");
+  Path outPath = Paths.get("src/test/resources", "list_pattern_out.docx");
+  Map<String, Object> model = new HashMap<String, Object>() {{
+    put("items", Arrays.asList("张三", "李四", "王五"));
+  }};
+  try (InputStream is = Files.newInputStream(inPath); OutputStream os = Files.newOutputStream(outPath)) {
+    Tpl.render(is, model).out(os);
+  } catch (IOException e) {
+    LOG.info("render tpl failed", e);
+  }
+}
+```
+
+输出：
+
+![extend-list-out](docs/assets/extend-list-out.jpg)
+
+总结：列表样式支持罗马字符、有序无序等，代码里面指定列表样式。
+
+
 

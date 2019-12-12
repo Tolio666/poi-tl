@@ -21,6 +21,7 @@ import com.deepoove.poi.policy.AbstractRenderPolicy.ClearHandler;
 import com.deepoove.poi.policy.AbstractRenderPolicy.ValidErrorHandler;
 import com.deepoove.poi.policy.DocxRenderPolicy;
 import com.deepoove.poi.policy.ImagePatternRenderPolicy;
+import com.deepoove.poi.policy.ListPatternRenderPolicy;
 import com.deepoove.poi.policy.MiniTableRenderPolicy;
 import com.deepoove.poi.policy.NumbericRenderPolicy;
 import com.deepoove.poi.policy.PictureRenderPolicy;
@@ -101,6 +102,7 @@ public class Configure {
         // 默认模式匹配
 		pluginPattern(TablePatternRenderPolicy.NAME, new TablePatternRenderPolicy());
 		pluginPattern(ImagePatternRenderPolicy.NAME, new ImagePatternRenderPolicy());
+		pluginPattern(ListPatternRenderPolicy.NAME, new ListPatternRenderPolicy());
     }
 
     /**

@@ -46,12 +46,7 @@ public class TablePatternRenderPolicy extends AbstractPatternRenderPolicy {
 
 	@Override
 	public void render(ElementTemplate eleTemplate, Object data, XWPFTemplate template) {
-		String attr = getAttr();
-		try {
-			generateLength = Integer.valueOf(attr);
-		} catch (NumberFormatException e) {
-			throw new RenderException("Table render attr must be number: " + attr);
-		}
+		parseAttr();
 
 		NiceXWPFDocument doc = template.getXWPFDocument();
 		RunTemplate runTemplate = (RunTemplate) eleTemplate;
@@ -74,6 +69,15 @@ public class TablePatternRenderPolicy extends AbstractPatternRenderPolicy {
 		}
 	}
 
+	private void parseAttr() {
+		String attr = getAttr();
+		try {
+			generateLength = Integer.valueOf(attr);
+		} catch (NumberFormatException e) {
+			throw new RenderException("Table render attr must be number: " + attr);
+		}
+	}
+
 	private void doRender(XWPFTable table, Object data) {
 		List<XWPFTableRow> rows = table.getRows();
 		if (rows.size() < ROW_LIMIT) {
@@ -83,6 +87,10 @@ public class TablePatternRenderPolicy extends AbstractPatternRenderPolicy {
 		List<PatternCell> patternCells = getPatternCells(row);
 		List list = wrapper(data);
 		int dataSize = list.size();
+		// 如果为-1，则根据实际的数据条数展示
+		if (generateLength == -1) {
+			generateLength = dataSize;
+		}
 		for (int i = 0; i < generateLength; i++) {
 			// 插入新行
 			XWPFTableRow currentRow = table.insertNewTableRow(2 + i);

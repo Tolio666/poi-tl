@@ -27,6 +27,11 @@ public abstract class AbstractPatternRenderPolicy implements RenderPolicy {
 		return false;
 	}
 
+	/**
+	 * 名称
+	 *
+	 * @return 返回名称
+	 */
 	public abstract String getName();
 
 	public String getAttr() {
