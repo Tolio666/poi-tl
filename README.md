@@ -155,7 +155,4 @@ public void run() {
 
 ![extend-list-out](docs/assets/extend-list-out.jpg)
 
-总结：列表样式支持罗马字符、有序无序等，代码里面指定列表样式。
-
-
-
+总结：列表也能正常渲染，保证原有的格式。
