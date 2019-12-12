@@ -82,7 +82,7 @@ public void run() {
 
 模板：
 
-![extend-image](/Users/xuanbo/Projects/opensource/poi-tl/docs/assets/extend-image.jpg)
+![extend-image](docs/assets/extend-image.jpg)
 
 测试代码：
 
